@@ -102,7 +102,8 @@ fun petReducer(state: PetState, event: PetEvent): PetState {
             petAnimationState = AnimationState.DRAG
         )
         is PetEvent.OnDrag -> state.copy(
-            petPosition = event.offset
+            // Keep pet within screen boundaries
+            petPosition = clampToScreenBounds(event.offset)
         )
         is PetEvent.OnDragEnd -> state.copy(
             isDragging = false,
@@ -130,21 +131,69 @@ fun petReducer(state: PetState, event: PetEvent): PetState {
 }
 ```
 
+**Side Effect Pattern**: The reducer is a pure function that only updates state. Side effects (haptic feedback, toast messages, network calls) are handled in the ViewModel after state updates. Events that require side effects (e.g., `OnToolkitClicked`) return the unchanged state from the reducer, and the ViewModel executes the side effect (showing toast) separately.
+
 ## 4. Live2D Integration
 
 ### 4.1 Library Selection
-**Primary Option**: `live2d-android` third-party library (GitHub)
-**Fallback Options**:
-1. Custom wrapper around Live2D Cubism Core
-2. WebView with Live2D web SDK
-3. Frame-based animation simulation
+**Primary Option**: `live2d-android` library by kshoji (GitHub: https://github.com/kshoji/Live2D-Android)
+- **Version**: 1.0.0 or latest compatible
+- **Features**: Native Live2D Cubism Core integration, model loading, rendering
+- **License**: Apache 2.0
+
+**Fallback Options** (in priority order):
+1. **Custom wrapper around Live2D Cubism Core**: Use official Cubism SDK with JNI bindings
+2. **WebView with Live2D web SDK**: Embed web-based Live2D viewer (higher memory usage)
+3. **Frame-based animation simulation**: Fallback to sprite animation if Live2D unavailable
+
+**Asset Directory Structure**:
+```
+app/src/main/assets/live2d/
+├── models/
+│   ├── shizuku/
+│   │   ├── shizuku.moc3
+│   │   ├── textures/
+│   │   └── motions/
+│   └── haru/
+├── config.json (optional model configuration)
+└── fallback.png (static fallback image)
+```
 
 ### 4.2 Model Management
-- Load `.moc3` model files from `assets/live2d/` directory
-- Support for texture files (`.png`) and motion files (`.json`)
-- Model lifecycle: load on demand, unload on background
+- **Model Loading**: Load `.moc3` model files from `assets/live2d/models/{model_name}/`
+- **Texture Support**: PNG texture files in `textures/` subdirectory
+- **Motion Support**: JSON motion files in `motions/` subdirectory
+- **Model Lifecycle**: 
+  - Load on first display, cache for performance
+  - Unload when app backgrounds (optional)
+  - Preload default model on app startup
+- **Configuration**: Optional `config.json` for model metadata and default motions
 
-### 4.3 Live2DView Composable
+### 4.3 Error Handling & Fallback Behavior
+
+**Model Loading Errors**:
+- **File Not Found**: Fallback to default model or static image with error logging
+- **Corrupt Model**: Attempt recovery, fallback to sprite animation
+- **Texture Missing**: Use placeholder texture, log warning
+
+**Runtime Errors**:
+- **Rendering Failures**: Graceful degradation to static image
+- **Memory Pressure**: Unload non-essential models, reduce texture quality
+- **Performance Issues**: Frame skipping for animations, maintain UI responsiveness
+
+**Fallback Strategy** (progressive degradation):
+1. Live2D model with full animations
+2. Live2D model with limited motions
+3. Static sprite sheet animation
+4. Static image with state transitions
+5. Placeholder image with error message
+
+**Error Reporting**:
+- Log errors to Android Logcat with `Live2D` tag
+- Non-blocking errors (user can continue interacting)
+- Critical errors show user-friendly message with retry option
+
+### 4.4 Live2DView Composable
 ```kotlin
 @Composable
 fun Live2DView(
@@ -175,7 +224,9 @@ fun Live2DView(
         AndroidView(
             factory = { context ->
                 Live2DView(context).apply {
-                    loadModel("shizuku.moc3")
+                    // Load default model from configuration
+                    // Model name can be configured via assets/live2d/config.json
+                    loadModel(getDefaultModelName())
                 }
             }
         )
@@ -273,6 +324,17 @@ class MockLLMService {
     
     suspend fun generateResponse(input: String): String {
         delay(1000) // Simulate network delay
+        
+        // Simulate random network failures (10% chance)
+        if (Random.nextFloat() < 0.1f) {
+            throw IOException("Network error: Failed to connect to LLM service")
+        }
+        
+        // Simulate empty response (5% chance)
+        if (Random.nextFloat() < 0.05f) {
+            return "" // Empty response to test error handling
+        }
+        
         return responses.random()
     }
 }
@@ -342,8 +404,15 @@ PetEvent.OnToolkitClicked -> {
 ### 8.1 build.gradle.kts Additions
 ```kotlin
 dependencies {
-    // Live2D library (to be determined after research)
-    implementation("com.github.someuser:live2d-android:1.0.0")
+    // Live2D Android library (kshoji/Live2D-Android via JitPack)
+    implementation("com.github.kshoji:Live2D-Android:1.0.0")
+    
+    // Add JitPack repository in settings.gradle.kts:
+    // dependencyResolutionManagement {
+    //     repositories {
+    //         maven { url = uri("https://jitpack.io") }
+    //     }
+    // }
     
     // MVI and Architecture
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")

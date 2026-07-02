@@ -1,0 +1,17 @@
+# Project Constitution (项目宪法)
+
+## 1. Code Quality & Verification (代码质量与验证)
+- **Tests are Mandatory**: Core logic transforms must have accompanying tests. [cite_start]No feature is "done" until tests pass. [cite: 103]
+- **No "Vibe Coding"**: Do not rely on code "looking right". [cite_start]Verify with runtime assertions and evidence. [cite: 28, 34]
+- [cite_start]**Evidence First**: Every implementation step must output evidence (logs, test results, or artifacts) to prove success. [cite: 108]
+
+## 2. Context Engineering (上下文工程)
+- [cite_start]**Disk > RAM**: Store durable state (plans, findings, logs) in files (`_plan.md`, `findings.md`), not in the chat context. [cite: 114, 134]
+- **No Large Pastes**: NEVER paste large JSON blobs, CSVs, or long logs into the chat. [cite_start]Read/Write them to files instead. [cite: 103]
+- [cite_start]**2-Action Rule**: After every 2 read/search operations, you MUST write your findings to `findings.md` to prevent context drift. [cite: 120]
+
+## 3. Workflow Discipline (工作流纪律)
+- **Plan First**: Update `_plan.md` before writing any code. [cite_start]Maintain one canonical plan of record. [cite: 140]
+- **Error Logging**: Log all errors and failures to `progress.md`. [cite_start]Never ignore an error; analyze it before retrying. [cite: 120]
+- [cite_start]**API Caching**: All external API calls must be cached locally to ensure deterministic runs and save resources. [cite: 103]
+- [cite_start]**Rollback Strategy**: For risky changes, have a clear rollback plan. [cite: 103]

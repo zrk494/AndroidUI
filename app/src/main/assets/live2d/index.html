@@ -31,15 +31,27 @@
             // Live2D Cubism 2.1 纹理是预渲染 sprite sheet,不需要 mipmap 多级采样。
             PIXI.settings.MIPMAP_TEXTURES = PIXI.MIPMAP_MODES.OFF;
 
+            // === 诊断模式:临时红色背景 + 绿色圆,定位白屏层级 ===
+            // 看到红方块+绿圆+模型 = 全好; 红方块+绿圆无模型 = 纹理问题;
+            // 红方块无绿圆 = stage 不绘制; 全白 = WebView 合成断裂
             const app = new PIXI.Application({
                 view: document.getElementById('canvas'),
                 autoStart: true,
-                backgroundAlpha: 0,
+                backgroundAlpha: 1,
+                backgroundColor: 0xff0000,
                 resolution: window.devicePixelRatio || 1,
                 autoDensity: true,
                 width: window.innerWidth,
                 height: window.innerHeight
             });
+
+            // 画一个绿色圆在 canvas 左上角,验证 PIXI stage 是否绘制
+            const debugCircle = new PIXI.Graphics();
+            debugCircle.beginFill(0x00ff00);
+            debugCircle.drawCircle(60, 60, 40);
+            debugCircle.endFill();
+            app.stage.addChild(debugCircle);
+            console.log('[DEBUG] diagnostic: red bg + green circle added');
 
             // Live2D 模型桥接接口,供原生侧通过 evaluateJavascript 调用
             window.live2dBridge = {

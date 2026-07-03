@@ -73,18 +73,22 @@
                     autoUpdate: true
                 });
 
-                const canvasW = app.view.width;
-                const canvasH = app.view.height;
-                console.log(`[DEBUG] canvas=${canvasW}x${canvasH} model=${model.width}x${model.height}`);
+                // 重要:用 app.screen 而不是 app.view。
+                // app.view.width 是 canvas backing buffer 尺寸(= CSS尺寸 × dpr),
+                // app.screen.width 才是 PIXI Renderer 实际渲染的逻辑尺寸。
+                // 用错会让模型定位到渲染区域之外,导致不可见。
+                const screenW = app.screen.width;
+                const screenH = app.screen.height;
+                console.log(`[DEBUG] screen=${screenW}x${screenH} view=${app.view.width}x${app.view.height} model=${model.width}x${model.height}`);
 
                 // 先缩放和定位,再加到 stage
                 const origW = model.internalModel?.originalWidth || model.width;
                 const origH = model.internalModel?.originalHeight || model.height;
-                const fitScale = Math.min(canvasW / origW, canvasH / origH) * 0.9;
+                const fitScale = Math.min(screenW / origW, screenH / origH) * 0.9;
                 model.scale.set(fitScale);
                 model.anchor.set(0.5, 0.5);
-                model.x = canvasW / 2;
-                model.y = canvasH / 2;
+                model.x = screenW / 2;
+                model.y = screenH / 2;
                 console.log(`[DEBUG] fitScale=${fitScale} pos=(${model.x},${model.y}) size=${model.width}x${model.height}`);
 
                 app.stage.addChild(model);

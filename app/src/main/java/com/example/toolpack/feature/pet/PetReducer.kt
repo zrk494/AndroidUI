@@ -72,9 +72,13 @@ fun petReducer(state: PetState, event: PetEvent): PetState {
                 timestamp = System.currentTimeMillis()
             )
             state.copy(
-                chatMessages = state.chatMessages + newMessage
+                chatMessages = state.chatMessages + newMessage,
+                isLoading = false,
+                errorMessage = null
             )
         }
+        PetEvent.OnLLMLoading -> state.copy(isLoading = true, errorMessage = null)
+        is PetEvent.OnLLMError -> state.copy(isLoading = false, errorMessage = event.message)
         PetEvent.OnToolkitClicked -> state // Side effect handled in ViewModel
         PetEvent.OnKeyboardVisible -> state.copy(keyboardVisible = true)
         PetEvent.OnKeyboardHidden -> state.copy(keyboardVisible = false)

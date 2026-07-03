@@ -38,16 +38,18 @@ class PetViewModel(
                 println("Long press haptic feedback")
             }
             is PetEvent.OnSendMessage -> {
-                // Generate mock LLM response after delay
+                // 先进入 loading 状态，再发起 LLM 请求；成功/失败分别 dispatch 对应事件
                 viewModelScope.launch {
+                    onEvent(PetEvent.OnLLMLoading)
                     try {
                         val response = llmService.generateResponse(event.text)
                         if (response.isNotEmpty()) {
                             onEvent(PetEvent.OnBotMessage(response))
+                        } else {
+                            onEvent(PetEvent.OnLLMError("收到空回复"))
                         }
                     } catch (e: Exception) {
-                        // Log error; optionally show error message
-                        println("LLM error: ${e.message}")
+                        onEvent(PetEvent.OnLLMError(e.message ?: "未知错误"))
                     }
                 }
             }

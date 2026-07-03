@@ -14,6 +14,9 @@ sealed class PetEvent {
     data class OnChatInputChanged(val text: String) : PetEvent()
     data class OnSendMessage(val text: String) : PetEvent()
     data class OnBotMessage(val text: String) : PetEvent()
+    // LLM 请求生命周期事件
+    object OnLLMLoading : PetEvent()
+    data class OnLLMError(val message: String) : PetEvent()
     
     // UI events
     object OnToolkitClicked : PetEvent()

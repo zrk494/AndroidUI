@@ -22,6 +22,9 @@ data class PetState(
     val chatMessages: List<ChatMessage> = emptyList(),
     val inputText: String = "",
     val keyboardVisible: Boolean = false,
+    // LLM 请求状态：loading 期间禁用输入并显示加载气泡，errorMessage 非空时显示错误气泡
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
     
     // UI visibility
     val toolkitButtonVisible: Boolean = true

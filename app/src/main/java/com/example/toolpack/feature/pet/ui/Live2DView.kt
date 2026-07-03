@@ -1,7 +1,10 @@
 package com.example.toolpack.feature.pet.ui
 
+import android.util.Log
 import android.view.View
+import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -124,6 +127,16 @@ fun Live2DView(
                             view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         }
                     }
+                    // 转发 WebView JS console 到 logcat,标签 Live2DJS,便于调试
+                    webChromeClient = object : WebChromeClient() {
+                        override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                            Log.i(
+                                "Live2DJS",
+                                "[${message.messageLevel()}] ${message.message()} at ${message.sourceId()}:${message.lineNumber()}"
+                            )
+                            return true
+                        }
+                    }
                     addJavascriptInterface(Live2DBridge(), "AndroidBridge")
                     loadUrl("file:///android_asset/live2d/index.html")
                     // 不消费触摸事件，交由 Compose 的 pointerInput 处理
@@ -150,11 +163,11 @@ fun Live2DView(
 private class Live2DBridge {
     @JavascriptInterface
     fun onModelLoaded() {
-        // 模型加载完成，可在此触发 Compose 状态更新（当前为空实现，留扩展点）
+        Log.i("Live2DBridge", "onModelLoaded")
     }
 
     @JavascriptInterface
     fun onError(message: String) {
-        // 模型加载失败，可在此触发 Compose 错误状态（当前为空实现，留扩展点）
+        Log.e("Live2DBridge", "onError: $message")
     }
 }

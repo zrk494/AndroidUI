@@ -26,6 +26,11 @@
     <script src="cubism2.min.js"></script>
     <script>
         (async function () {
+            // 关闭 PIXI 全局 mipmap,绕过部分移动 GPU(如 Honor Mali)的
+            // glGenerateMipmap GL_INVALID_OPERATION 错误。
+            // Live2D Cubism 2.1 纹理是预渲染 sprite sheet,不需要 mipmap 多级采样。
+            PIXI.settings.MIPMAP_TEXTURES = PIXI.MIPMAP_MODES.OFF;
+
             const app = new PIXI.Application({
                 view: document.getElementById('canvas'),
                 autoStart: true,

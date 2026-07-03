@@ -73,16 +73,32 @@
                     autoUpdate: true
                 });
 
-                // 居中并缩放模型以适应画布
-                const scale = Math.min(
-                    app.view.width / model.width,
-                    app.view.height / model.height
-                ) * 0.9;
-                model.scale.set(scale);
-                model.x = app.view.width / 2 - model.width / 2;
-                model.y = app.view.height / 2 - model.height / 2;
+                // 调试日志:确认 canvas 和 model 实际尺寸
+                const canvasW = app.view.width;
+                const canvasH = app.view.height;
+                console.log(`[DEBUG] window=${window.innerWidth}x${window.innerHeight} dpr=${window.devicePixelRatio}`);
+                console.log(`[DEBUG] canvas=${canvasW}x${canvasH}`);
+                console.log(`[DEBUG] model original=${model.width}x${model.height} anchors=${model.anchor.x},${model.anchor.y}`);
 
                 app.stage.addChild(model);
+
+                // Live2D 桌宠被 Compose 限制在 120dp 的 Box 里,canvas 实际尺寸很小。
+                // 直接 fit 到 canvas 会让模型占满整个 WebView(可能正好等于 120dp)。
+                // 用 model.originalWidth/originalHeight 计算一个让模型占 canvas 较大比例
+                // 但留出边距的缩放,确保可见。
+                const origW = model.internalModel?.originalWidth || model.width;
+                const origH = model.internalModel?.originalHeight || model.height;
+                // 让模型占据 canvas 较大边的 90%
+                const fitScale = Math.min(canvasW / origW, canvasH / origH) * 0.9;
+                model.scale.set(fitScale);
+                console.log(`[DEBUG] fitScale=${fitScale} scaled=${model.width}x${model.height}`);
+
+                // 锚点设为 (0.5, 0.5) 后, x/y 即模型中心点位置
+                model.anchor.set(0.5, 0.5);
+                model.x = canvasW / 2;
+                model.y = canvasH / 2;
+                console.log(`[DEBUG] final pos=(${model.x},${model.y}) size=${model.width}x${model.height}`);
+
                 window.live2dBridge.model = model;
 
                 // 通知原生侧模型加载完成

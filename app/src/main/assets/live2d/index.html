@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Live2D Pet</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: transparent;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #canvas { display: block; width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <!-- 加载顺序严格: live2d core → pixi → pixi-live2d-display cubism2 bundle -->
+    <!-- cubism2.min.js 依赖全局 PIXI 对象,所以 pixi 必须先加载 -->
+    <script src="live2d.min.js"></script>
+    <script src="pixi.min.js"></script>
+    <script src="cubism2.min.js"></script>
+    <script>
+        (async function () {
+            const app = new PIXI.Application({
+                view: document.getElementById('canvas'),
+                autoStart: true,
+                backgroundAlpha: 0,
+                resolution: window.devicePixelRatio || 1,
+                autoDensity: true,
+                width: window.innerWidth,
+                height: window.innerHeight
+            });
+
+            // Live2D 模型桥接接口,供原生侧通过 evaluateJavascript 调用
+            window.live2dBridge = {
+                model: null,
+                tap: function (x, y) {
+                    if (this.model) {
+                        this.model.tap(x, y);
+                    }
+                },
+                focus: function (x, y) {
+                    if (this.model) {
+                        this.model.focusX = x / window.innerWidth;
+                        this.model.focusY = y / window.innerHeight;
+                    }
+                },
+                expression: function (name) {
+                    if (this.model) {
+                        this.model.expression(name);
+                    }
+                },
+                motion: function (group, index) {
+                    if (this.model) {
+                        this.model.motion(group, index);
+                    }
+                }
+            };
+
+            try {
+                const model = await PIXI.live2d.Live2DModel.from('shizuku/shizuku.model.json', {
+                    autoInteract: false,
+                    autoUpdate: true
+                });
+
+                // 居中并缩放模型以适应画布
+                const scale = Math.min(
+                    app.view.width / model.width,
+                    app.view.height / model.height
+                ) * 0.9;
+                model.scale.set(scale);
+                model.x = app.view.width / 2 - model.width / 2;
+                model.y = app.view.height / 2 - model.height / 2;
+
+                app.stage.addChild(model);
+                window.live2dBridge.model = model;
+
+                // 通知原生侧模型加载完成
+                if (window.AndroidBridge && window.AndroidBridge.onModelLoaded) {
+                    window.AndroidBridge.onModelLoaded();
+                }
+            } catch (err) {
+                console.error('Live2D model load failed:', err);
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(String(err && err.message || err));
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

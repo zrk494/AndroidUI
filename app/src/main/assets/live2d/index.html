@@ -31,27 +31,15 @@
             // Live2D Cubism 2.1 纹理是预渲染 sprite sheet,不需要 mipmap 多级采样。
             PIXI.settings.MIPMAP_TEXTURES = PIXI.MIPMAP_MODES.OFF;
 
-            // === 诊断模式:临时红色背景 + 绿色圆,定位白屏层级 ===
-            // 看到红方块+绿圆+模型 = 全好; 红方块+绿圆无模型 = 纹理问题;
-            // 红方块无绿圆 = stage 不绘制; 全白 = WebView 合成断裂
             const app = new PIXI.Application({
                 view: document.getElementById('canvas'),
                 autoStart: true,
-                backgroundAlpha: 1,
-                backgroundColor: 0xff0000,
+                backgroundAlpha: 0,
                 resolution: window.devicePixelRatio || 1,
                 autoDensity: true,
                 width: window.innerWidth,
                 height: window.innerHeight
             });
-
-            // 画一个绿色圆在 canvas 左上角,验证 PIXI stage 是否绘制
-            const debugCircle = new PIXI.Graphics();
-            debugCircle.beginFill(0x00ff00);
-            debugCircle.drawCircle(60, 60, 40);
-            debugCircle.endFill();
-            app.stage.addChild(debugCircle);
-            console.log('[DEBUG] diagnostic: red bg + green circle added');
 
             // Live2D 模型桥接接口,供原生侧通过 evaluateJavascript 调用
             window.live2dBridge = {
@@ -85,35 +73,33 @@
                     autoUpdate: true
                 });
 
-                // 调试日志:确认 canvas 和 model 实际尺寸
                 const canvasW = app.view.width;
                 const canvasH = app.view.height;
-                console.log(`[DEBUG] window=${window.innerWidth}x${window.innerHeight} dpr=${window.devicePixelRatio}`);
-                console.log(`[DEBUG] canvas=${canvasW}x${canvasH}`);
-                console.log(`[DEBUG] model original=${model.width}x${model.height} anchors=${model.anchor.x},${model.anchor.y}`);
+                console.log(`[DEBUG] canvas=${canvasW}x${canvasH} model=${model.width}x${model.height}`);
 
-                app.stage.addChild(model);
-
-                // Live2D 桌宠被 Compose 限制在 120dp 的 Box 里,canvas 实际尺寸很小。
-                // 直接 fit 到 canvas 会让模型占满整个 WebView(可能正好等于 120dp)。
-                // 用 model.originalWidth/originalHeight 计算一个让模型占 canvas 较大比例
-                // 但留出边距的缩放,确保可见。
+                // 先缩放和定位,再加到 stage
                 const origW = model.internalModel?.originalWidth || model.width;
                 const origH = model.internalModel?.originalHeight || model.height;
-                // 让模型占据 canvas 较大边的 90%
                 const fitScale = Math.min(canvasW / origW, canvasH / origH) * 0.9;
                 model.scale.set(fitScale);
-                console.log(`[DEBUG] fitScale=${fitScale} scaled=${model.width}x${model.height}`);
-
-                // 锚点设为 (0.5, 0.5) 后, x/y 即模型中心点位置
                 model.anchor.set(0.5, 0.5);
                 model.x = canvasW / 2;
                 model.y = canvasH / 2;
-                console.log(`[DEBUG] final pos=(${model.x},${model.y}) size=${model.width}x${model.height}`);
+                console.log(`[DEBUG] fitScale=${fitScale} pos=(${model.x},${model.y}) size=${model.width}x${model.height}`);
+
+                app.stage.addChild(model);
+
+                // 修复 "no texture bound to unit 1" 警告导致模型透明的问题。
+                // Cubism 2 渲染器在 mask 纹理(unit 1)绑定前就渲染了第一帧,导致模型全透明。
+                // 强制更新一次模型内部状态,让 mask 纹理先绑定好,再触发 stage 重绘。
+                if (model.update) {
+                    model.update(0.016);
+                }
+                // 触发一次 resize 事件强制 PIXI 重新渲染整个 stage
+                window.dispatchEvent(new Event('resize'));
 
                 window.live2dBridge.model = model;
 
-                // 通知原生侧模型加载完成
                 if (window.AndroidBridge && window.AndroidBridge.onModelLoaded) {
                     window.AndroidBridge.onModelLoaded();
                 }

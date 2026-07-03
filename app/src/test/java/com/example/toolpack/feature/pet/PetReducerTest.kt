@@ -3,6 +3,7 @@ package com.example.toolpack.feature.pet
 import androidx.compose.ui.geometry.Offset
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -119,6 +120,33 @@ class PetReducerTest {
         assertEquals(1, next.chatMessages.size)
         assertEquals("hi", next.chatMessages[0].text)
         assertFalse(next.chatMessages[0].isUser)
+        // 成功收到回复后应清除 loading 和 error
+        assertFalse(next.isLoading)
+        assertNull(next.errorMessage)
+    }
+
+    @Test
+    fun `OnLLMLoading sets isLoading true and clears error`() {
+        val state = initialState().copy(errorMessage = "old error")
+        val next = petReducer(state, PetEvent.OnLLMLoading)
+        assertTrue(next.isLoading)
+        assertNull(next.errorMessage)
+    }
+
+    @Test
+    fun `OnLLMError sets errorMessage and clears loading`() {
+        val state = initialState().copy(isLoading = true)
+        val next = petReducer(state, PetEvent.OnLLMError("网络错误"))
+        assertFalse(next.isLoading)
+        assertEquals("网络错误", next.errorMessage)
+    }
+
+    @Test
+    fun `OnBotMessage clears loading and error`() {
+        val state = initialState().copy(isLoading = true, errorMessage = "err")
+        val next = petReducer(state, PetEvent.OnBotMessage("reply"))
+        assertFalse(next.isLoading)
+        assertNull(next.errorMessage)
     }
 
     // --- OnScreenSizeAvailable ---
